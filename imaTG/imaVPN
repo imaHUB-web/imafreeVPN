@@ -1,0 +1,43 @@
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
+import paramiko
+import asyncio
+
+# Данные для подключения к серверу
+HOST = "192.168.0.1"
+USERNAME = "Router-74AO"
+PASSWORD = "admin"
+
+# Токен бота из BotFather
+TELEGRAM_TOKEN = "7762935543:AAGfNiwnkRtpXh4in0LMQCg0RiMQXdjLGYY"
+
+# Функция для выполнения команд на сервере
+def execute_ssh_command(command):
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    client.connect(HOST, username=USERNAME, password=PASSWORD)
+
+    stdin, stdout, stderr = client.exec_command(command)
+    result = stdout.read().decode() + stderr.read().decode()
+    client.close()
+    return result
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.message.reply_text("Бот готов к работе! Отправь команду для выполнения на сервере.")
+
+async def handle_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_command = update.message.text
+    result = execute_ssh_command(user_command)
+    await update.message.reply_text(result)
+
+async def main():
+    app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_command))
+
+    print("Бот запущен...")
+    await app.run_polling()
+
+if __name__ == "__main__":
+    asyncio.run(main())
